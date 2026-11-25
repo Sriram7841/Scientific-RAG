@@ -1,0 +1,19 @@
+.env
+.env.example
+.env.local
+venv/
+.venv/
+__pycache__/
+*.pyc
+*.sqlite3
+*.pkl
+*.joblib
+.ipynb_checkpoints/
+
+# Datasets
+/data/*.csv
+/arxivData.json
+
+# FAISS
+/data/*.index
+/data/faiss_index*

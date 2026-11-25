@@ -1,0 +1,35 @@
+{% extends 'base/base.html' %}
+{% block title %}Profile — GraphRAG{% endblock %}
+{% block content %}
+<div class="max-w-2xl mx-auto px-4 py-12">
+  <h1 class="font-display text-3xl font-bold text-gray-900 mb-8">My Profile</h1>
+  <div class="card p-8">
+    <div class="flex items-center gap-6 mb-8">
+      <div class="w-20 h-20 grad-brand rounded-2xl flex items-center justify-center text-white text-3xl font-bold shadow-lg">{{ user.username|first|upper }}</div>
+      <div>
+        <h2 class="text-2xl font-bold text-gray-900">{{ user.get_full_name|default:user.username }}</h2>
+        <p class="text-gray-500 font-mono">@{{ user.username }}</p>
+        <p class="text-gray-400 text-sm">{{ user.email }}</p>
+      </div>
+    </div>
+    <div class="grid grid-cols-3 gap-4 mb-8">
+      <div class="bg-brand-pale rounded-xl p-4 text-center">
+        <div class="text-2xl font-bold text-brand-DEFAULT">{{ user.query_count }}</div>
+        <div class="text-xs text-gray-600 mt-1">Queries Asked</div>
+      </div>
+      <div class="bg-sky-pale rounded-xl p-4 text-center">
+        <div class="text-2xl font-bold text-sky-dark">{{ session_count }}</div>
+        <div class="text-xs text-gray-600 mt-1">Research Sessions</div>
+      </div>
+      <div class="bg-gray-50 rounded-xl p-4 text-center">
+        <div class="text-sm font-bold text-gray-900">{{ user.date_joined|date:"M Y" }}</div>
+        <div class="text-xs text-gray-600 mt-1">Member Since</div>
+      </div>
+    </div>
+    <div class="flex gap-3">
+      <a href="/chat/" class="btn-brand px-6 py-2.5 rounded-xl text-sm font-semibold">💬 Open Chat</a>
+      <a href="/accounts/logout/" class="px-6 py-2.5 rounded-xl text-sm font-semibold bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors">Logout</a>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,185 @@
+{% extends 'base/base.html' %}
+{% block title %}EDA — GraphRAG{% endblock %}
+{% block extra_css %}<script src="https://cdn.plot.ly/plotly-2.26.0.min.js"></script>{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 py-8">
+  <div class="flex items-center gap-4 mb-8">
+    <a href="/admin-panel/" class="text-gray-400 hover:text-brand-DEFAULT text-sm">← Dashboard</a>
+    <h1 class="font-display text-3xl font-bold text-gray-900">Exploratory Data Analysis</h1>
+  </div>
+
+  <!-- Summary -->
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+    <div class="card p-5 text-center"><div class="text-2xl font-bold grad-text">{{ total_records|default:0 }}</div><div class="text-sm text-gray-500 mt-1">Total Records</div></div>
+    <div class="card p-5 text-center"><div class="text-2xl font-bold text-sky-dark">{{ num_categories|default:25 }}</div><div class="text-sm text-gray-500 mt-1">Categories</div></div>
+    <div class="card p-5 text-center"><div class="text-2xl font-bold text-green-600">{{ avg_abstract_len|default:0 }}</div><div class="text-sm text-gray-500 mt-1">Avg Abstract Chars</div></div>
+    <div class="card p-5 text-center">
+      <div class="text-sm font-bold text-gray-900">cs.LG · cs.CV · cs.CL</div>
+      <div class="text-xs text-gray-500 mt-1">Top-3 Categories</div>
+    </div>
+  </div>
+
+  <!-- Top-5 highlight -->
+  <!-- Top-5 highlight -->
+<div class="card p-6 mb-6">
+    <h2 class="font-semibold text-gray-900 text-lg mb-4">
+        🏆 Top-5 Categories
+    </h2>
+
+    <div class="grid grid-cols-1 md:grid-cols-5 gap-3">
+
+        {% for category,name,count,percentage in top5_data %}
+
+        <div class="bg-brand-pale rounded-xl p-4 text-center">
+
+            <div class="font-mono font-bold text-brand-dark text-lg">
+                {{ category }}
+            </div>
+
+            <div class="text-2xl font-bold text-gray-900 my-1">
+                {{ count }}
+            </div>
+
+            <div class="text-xs text-gray-500">
+                {{ name }}
+            </div>
+
+            <div class="text-xs text-green-600 mt-2">
+                {{ percentage }}%
+            </div>
+
+        </div>
+
+        {% endfor %}
+
+    </div>
+</div>
+
+  <!-- Bar chart -->
+  <div class="card p-6 mb-6">
+    <h2 class="font-semibold text-gray-900 text-lg mb-4">📊 All 25 Categories — Paper Count Distribution</h2>
+    <div id="cat-bar" style="height:420px"></div>
+  </div>
+
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+    <div class="card p-6">
+      <h2 class="font-semibold text-gray-900 text-lg mb-4">🍕 Top 10 — Pie Chart</h2>
+      <div id="cat-pie" style="height:320px"></div>
+    </div>
+    <div class="card p-6">
+      <h2 class="font-semibold text-gray-900 text-lg mb-4">☁️ Top Keywords from Abstracts</h2>
+      <div id="wordcloud" style="height:320px;overflow:hidden;display:flex;flex-wrap:wrap;gap:8px;align-content:flex-start;padding:10px;"></div>
+    </div>
+  </div>
+
+  <!-- Schema info -->
+  <div class="card p-6">
+    <h2 class="font-semibold text-gray-900 text-lg mb-4">📋 Dataset Schema</h2>
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead class="bg-gray-50">
+          <tr>
+            <th class="text-left px-4 py-2 font-semibold text-gray-600">Column</th>
+            <th class="text-left px-4 py-2 font-semibold text-gray-600">Description</th>
+            <th class="text-left px-4 py-2 font-semibold text-gray-600">Used For</th>
+            <th class="text-left px-4 py-2 font-semibold text-gray-600">Example</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="border-t border-gray-50">
+            <td class="px-4 py-3 font-mono text-brand-dark font-bold">title</td>
+            <td class="px-4 py-3 text-gray-600">Paper title from arXiv API</td>
+            <td class="px-4 py-3"><span class="bg-green-50 text-green-700 text-xs px-2 py-0.5 rounded-full">TF-IDF + Embedding</span></td>
+            <td class="px-4 py-3 text-xs text-gray-400 italic">Attention Is All You Need</td>
+          </tr>
+          <tr class="border-t border-gray-50">
+            <td class="px-4 py-3 font-mono text-brand-dark font-bold">abstract</td>
+            <td class="px-4 py-3 text-gray-600">Full paper abstract (main text)</td>
+            <td class="px-4 py-3"><span class="bg-green-50 text-green-700 text-xs px-2 py-0.5 rounded-full">TF-IDF + FAISS chunks</span></td>
+            <td class="px-4 py-3 text-xs text-gray-400 italic">We propose a novel…</td>
+          </tr>
+          <tr class="border-t border-gray-50">
+            <td class="px-4 py-3 font-mono text-brand-dark font-bold">category</td>
+            <td class="px-4 py-3 text-gray-600">Primary arXiv category label</td>
+            <td class="px-4 py-3"><span class="bg-blue-50 text-blue-700 text-xs px-2 py-0.5 rounded-full">Classification target</span></td>
+            <td class="px-4 py-3 font-mono text-xs text-gray-400">cs.LG, cs.CV, quant-ph…</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="mt-4 p-4 bg-gray-50 rounded-xl font-mono text-xs text-gray-500 leading-relaxed">
+      <strong>Preprocessing pipeline:</strong><br>
+      1. Remove nulls &amp; empty abstracts<br>
+      2. Lowercase + strip special characters<br>
+      3. Remove NLTK English stopwords<br>
+      4. TF-IDF vectorization: max_features=30,000 · ngram_range=(1,2) · sublinear_tf=True<br>
+      5. 80/20 stratified train/test split → LinearSVC + ComplementNB
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const catLabels = {{ cat_labels|default:"[]"|safe }};
+  const catNames  = {{ cat_names|default:"[]"|safe }};
+  const catCounts = {{ cat_counts|default:"[]"|safe }};
+  const topWords  = {{ top_words|default:"[]"|safe }};
+
+  const COLORS = ['#FF6B35','#4FC3F7','#22c55e','#f59e0b','#8b5cf6',
+                  '#ec4899','#14b8a6','#f97316','#6366f1','#84cc16',
+                  '#06b6d4','#a855f7','#ef4444','#3b82f6','#10b981',
+                  '#f59e0b','#6b7280','#1d4ed8','#7c3aed','#b91c1c',
+                  '#065f46','#1e40af','#92400e','#134e4a','#4c1d95'];
+
+  if(catLabels.length){
+    // Horizontal bar
+    const sorted=[...catLabels.map((l,i)=>({l,n:catNames[i],c:catCounts[i],col:COLORS[i%COLORS.length]}))].sort((a,b)=>b.c-a.c);
+    Plotly.newPlot('cat-bar',[{
+      y:sorted.map(d=>d.l+' ('+d.n+')'),
+      x:sorted.map(d=>d.c),
+      type:'bar',orientation:'h',
+      marker:{color:sorted.map(d=>d.col),opacity:.85},
+      text:sorted.map(d=>d.c.toLocaleString()),textposition:'outside',
+    }],{
+      margin:{t:10,b:40,l:220,r:80},
+      xaxis:{title:'Number of Papers',gridcolor:'#f5f5f5'},
+      yaxis:{autorange:'reversed'},
+      plot_bgcolor:'white',paper_bgcolor:'white',
+    },{responsive:true,displayModeBar:false});
+
+    // Pie top-10
+    Plotly.newPlot('cat-pie',[{
+      labels:catLabels.slice(0,10).map((l,i)=>l+'\n'+catNames[i]),
+      values:catCounts.slice(0,10),
+      type:'pie',hole:0.4,
+      marker:{colors:COLORS.slice(0,10)},
+      textinfo:'label+percent',textfont:{size:10},
+    }],{
+      margin:{t:20,b:20,l:20,r:20},showlegend:false,
+      plot_bgcolor:'white',paper_bgcolor:'white',
+    },{responsive:true,displayModeBar:false});
+  } else {
+    ['cat-bar','cat-pie'].forEach(id=>{
+      document.getElementById(id).innerHTML='<div class="flex items-center justify-center h-full text-gray-400 text-sm">No data. Run pipeline first.</div>';
+    });
+  }
+
+  // Word cloud
+  if(topWords.length){
+    const wc=document.getElementById('wordcloud');
+    const mx=Math.max(...topWords.map(w=>w.size));
+    topWords.forEach((w,i)=>{
+      const fs=Math.max(11,Math.round(11+(w.size/mx)*34));
+      const el=document.createElement('span');
+      el.textContent=w.text;
+      el.style.cssText=`font-size:${fs}px;font-weight:${fs>24?700:500};`+
+        `color:${COLORS[i%COLORS.length]};opacity:${0.55+0.45*(w.size/mx)};cursor:default;transition:opacity .2s;`;
+      el.onmouseover=()=>el.style.opacity=1;
+      el.onmouseout=()=>el.style.opacity=(0.55+0.45*(w.size/mx)).toString();
+      wc.appendChild(el);
+    });
+  }
+</script>
+{% endblock %}

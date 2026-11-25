@@ -1,0 +1,56 @@
+{% extends 'base/base.html' %}
+{% block title %}Sign Up — GraphRAG{% endblock %}
+{% block content %}
+<div class="min-h-screen flex items-center justify-center py-12 px-4 bg-gradient-to-br from-sky-pale via-white to-brand-pale">
+  <div class="w-full max-w-md">
+    <div class="text-center mb-8 fade-up">
+      <div class="inline-flex items-center justify-center w-20 h-20 grad-brand rounded-2xl shadow-xl mb-5">
+        <span class="text-white text-3xl">🚀</span>
+      </div>
+      <h1 class="font-display text-3xl font-bold text-gray-900 mb-2">Create Account</h1>
+      <p class="text-gray-500">Join the AI-powered research platform</p>
+    </div>
+    <div class="card p-8 fade-up">
+      <form method="post" class="space-y-4">
+        {% csrf_token %}
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-1.5">First Name</label>
+            <input name="first_name" type="text" required
+              class="w-full px-3 py-2.5 rounded-xl border-2 border-gray-200 focus:border-brand-DEFAULT focus:outline-none text-sm transition-colors" placeholder="Jane">
+          </div>
+          <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-1.5">Last Name</label>
+            <input name="last_name" type="text" required
+              class="w-full px-3 py-2.5 rounded-xl border-2 border-gray-200 focus:border-brand-DEFAULT focus:outline-none text-sm transition-colors" placeholder="Smith">
+          </div>
+        </div>
+        <div>
+          <label class="block text-sm font-semibold text-gray-700 mb-1.5">Username</label>
+          <input name="username" type="text" required
+            class="w-full px-4 py-2.5 rounded-xl border-2 border-gray-200 focus:border-brand-DEFAULT focus:outline-none font-mono text-sm transition-colors" placeholder="researcher_42">
+        </div>
+        <div>
+          <label class="block text-sm font-semibold text-gray-700 mb-1.5">Email</label>
+          <input name="email" type="email" required
+            class="w-full px-4 py-2.5 rounded-xl border-2 border-gray-200 focus:border-brand-DEFAULT focus:outline-none text-sm transition-colors" placeholder="jane@university.edu">
+        </div>
+        <div>
+          <label class="block text-sm font-semibold text-gray-700 mb-1.5">Password</label>
+          <input name="password1" type="password" required
+            class="w-full px-4 py-2.5 rounded-xl border-2 border-gray-200 focus:border-brand-DEFAULT focus:outline-none font-mono text-sm transition-colors" placeholder="Min. 8 characters">
+        </div>
+        <div>
+          <label class="block text-sm font-semibold text-gray-700 mb-1.5">Confirm Password</label>
+          <input name="password2" type="password" required
+            class="w-full px-4 py-2.5 rounded-xl border-2 border-gray-200 focus:border-brand-DEFAULT focus:outline-none font-mono text-sm transition-colors" placeholder="Repeat password">
+        </div>
+        <button type="submit" class="btn-brand w-full py-3 rounded-xl font-semibold text-sm mt-2">Create Account →</button>
+      </form>
+      <p class="text-center text-sm text-gray-500 mt-4">
+        Already registered? <a href="/accounts/login/" class="text-brand-DEFAULT font-semibold hover:text-brand-dark ml-1">Sign in</a>
+      </p>
+    </div>
+  </div>
+</div>
+{% endblock %}

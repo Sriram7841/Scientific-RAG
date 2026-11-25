@@ -1,0 +1,236 @@
+{% extends 'base/base.html' %}
+{% block title %}Knowledge Graph — GraphRAG{% endblock %}
+{% block extra_css %}<script src="https://cdn.plot.ly/plotly-2.26.0.min.js"></script>{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 py-8">
+  <div class="flex items-center justify-between mb-8">
+    <div class="flex items-center gap-4">
+      <a href="/admin-panel/" class="text-gray-400 hover:text-brand-DEFAULT text-sm transition-colors">← Dashboard</a>
+      <h1 class="font-display text-3xl font-bold text-gray-900">Knowledge Graph</h1>
+    </div>
+    <div class="flex gap-3">
+      <button onclick="loadGraph()" class="btn-brand px-4 py-2 rounded-xl text-sm font-semibold">🔄 Load / Reload</button>
+      <button onclick="toggleFilter()" class="btn-sky px-4 py-2 rounded-xl text-sm font-semibold">🔍 Filter</button>
+    </div>
+  </div>
+
+  <!-- Legend -->
+  <div class="flex gap-3 mb-5 flex-wrap">
+    <div class="flex items-center gap-2 bg-white px-3 py-2 rounded-xl border border-gray-100 shadow-sm">
+      <span class="w-3 h-3 rounded-full" style="background:#FF6B35"></span>
+      <span class="text-xs font-medium text-gray-600">Model (BERT, GPT…)</span>
+    </div>
+    <div class="flex items-center gap-2 bg-white px-3 py-2 rounded-xl border border-gray-100 shadow-sm">
+      <span class="w-3 h-3 rounded-full" style="background:#4FC3F7"></span>
+      <span class="text-xs font-medium text-gray-600">Method (attention, fine-tuning…)</span>
+    </div>
+    <div class="flex items-center gap-2 bg-white px-3 py-2 rounded-xl border border-gray-100 shadow-sm">
+      <span class="w-3 h-3 rounded-full" style="background:#22c55e"></span>
+      <span class="text-xs font-medium text-gray-600">Domain (NLP, robotics…)</span>
+    </div>
+    <div class="flex items-center gap-2 bg-white px-3 py-2 rounded-xl border border-gray-100 shadow-sm">
+      <span class="w-3 h-3 rounded-full" style="background:#f59e0b"></span>
+      <span class="text-xs font-medium text-gray-600">Concept</span>
+    </div>
+    <div class="text-xs text-gray-400 flex items-center gap-1 ml-2">
+      <span>Node size = frequency in corpus</span>
+    </div>
+  </div>
+
+  <!-- Filter bar -->
+  <div id="filter-bar" class="hidden card p-4 mb-5 flex gap-4 items-center flex-wrap">
+    <select id="type-filter" class="px-3 py-2 rounded-lg border border-gray-200 text-sm bg-white">
+      <option value="">All Types</option>
+      <option value="model">Model</option>
+      <option value="method">Method</option>
+      <option value="domain">Domain</option>
+    </select>
+    <input id="name-filter" type="text" placeholder="Search node name…"
+      class="px-3 py-2 rounded-lg border border-gray-200 text-sm flex-1 min-w-40">
+    <button onclick="applyFilter()" class="btn-brand px-4 py-2 rounded-lg text-xs font-semibold">Apply</button>
+    <button onclick="clearFilter()" class="px-4 py-2 rounded-lg text-xs border border-gray-200 hover:bg-gray-50 transition-colors">Clear</button>
+  </div>
+
+  <!-- Graph container -->
+  <div class="card p-4" style="height:580px;">
+    {% if not graph_ready %}
+    <div class="flex flex-col items-center justify-center h-full text-center">
+      <div class="text-5xl mb-4">🕸️</div>
+      <h3 class="text-xl font-bold text-gray-900 mb-2">Knowledge Graph Not Built Yet</h3>
+      <p class="text-gray-500 mb-6 max-w-lg">
+        Build the FAISS index + Knowledge Graph from the Admin Dashboard first.<br>
+        The graph extracts methods, models, and domains from arXiv abstracts.
+      </p>
+      <a href="/admin-panel/" class="btn-brand px-6 py-3 rounded-xl font-semibold text-sm inline-block">← Go to Dashboard</a>
+    </div>
+    {% else %}
+    <div id="graph-plot" style="width:100%;height:100%;"></div>
+    {% endif %}
+  </div>
+
+  <!-- Node info panel -->
+  <div id="node-info" class="hidden card p-5 mt-4 border-l-4 border-brand-DEFAULT">
+    <h3 class="font-bold text-gray-900 text-lg mb-3" id="ni-title">Node Details</h3>
+    <div class="grid grid-cols-3 gap-6 text-sm">
+      <div>
+        <div class="text-gray-500 text-xs mb-1">Type</div>
+        <div id="ni-type" class="font-semibold text-gray-900"></div>
+      </div>
+      <div>
+        <div class="text-gray-500 text-xs mb-1">Frequency in Corpus</div>
+        <div id="ni-freq" class="font-mono font-bold text-brand-DEFAULT text-xl"></div>
+      </div>
+      <div>
+        <div class="text-gray-500 text-xs mb-1">Node ID</div>
+        <div id="ni-id" class="font-mono text-xs text-gray-400 break-all"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stats bar -->
+  <div id="graph-stats" class="hidden mt-4 flex gap-6 text-sm text-gray-500">
+    <span>🔵 <span id="st-nodes">0</span> nodes</span>
+    <span>🔗 <span id="st-edges">0</span> edges</span>
+    <span>📌 Click a node to see details</span>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  let gdata = null;
+
+  {% if graph_ready %}
+  window.addEventListener('DOMContentLoaded', loadGraph);
+  {% endif %}
+
+  function toggleFilter() {
+    document.getElementById('filter-bar').classList.toggle('hidden');
+  }
+
+  async function loadGraph() {
+    const container = document.getElementById('graph-plot');
+    if (!container) return;
+    container.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#aaa;font-size:14px;">⏳ Loading graph data…</div>';
+
+    try {
+      const r = await fetch('/rag/graph-viz/');
+      gdata   = await r.json();
+      if (!gdata.nodes || !gdata.nodes.length) {
+        container.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;text-align:center;"><div style="font-size:48px;margin-bottom:16px;">🕸️</div><p style="color:#aaa;font-size:14px;">No graph data.<br>Build the index from the dashboard first.</p></div>';
+        return;
+      }
+      renderGraph(gdata.nodes, gdata.edges);
+    } catch(e) {
+      container.innerHTML = `<div style="color:#ef4444;padding:20px;font-size:14px;">Error loading graph: ${e.message}</div>`;
+    }
+  }
+
+  function applyFilter() {
+    if (!gdata) return;
+    const tf = document.getElementById('type-filter').value;
+    const nf = document.getElementById('name-filter').value.toLowerCase();
+    const nodes = gdata.nodes.filter(n =>
+      (!tf || n.type === tf) && (!nf || n.label.toLowerCase().includes(nf))
+    );
+    const nids  = new Set(nodes.map(n => n.id));
+    const edges = gdata.edges.filter(e => nids.has(e.source) && nids.has(e.target));
+    renderGraph(nodes, edges);
+  }
+
+  function clearFilter() {
+    document.getElementById('type-filter').value = '';
+    document.getElementById('name-filter').value = '';
+    if (gdata) renderGraph(gdata.nodes, gdata.edges);
+  }
+
+  function renderGraph(nodes, edges) {
+    if (!nodes.length) return;
+    const n    = nodes.length;
+    const pos  = {};
+    const rings = Math.ceil(Math.sqrt(n / Math.PI));
+
+    // Concentric ring layout for better separation
+    let ni = 0;
+    for (let ring = 0; ring <= rings && ni < n; ring++) {
+      const r    = ring === 0 ? 0 : ring * 2.2;
+      const pts  = ring === 0 ? 1 : Math.max(6, Math.round(2 * Math.PI * ring * 2));
+      const step = ring === 0 ? 1 : pts;
+      for (let j = 0; j < step && ni < n; j++, ni++) {
+        const angle = (2 * Math.PI * j) / step;
+        pos[nodes[ni].id] = [
+          r * Math.cos(angle) + (Math.random() - 0.5) * 0.4,
+          r * Math.sin(angle) + (Math.random() - 0.5) * 0.4,
+        ];
+      }
+    }
+
+    // Edge trace
+    const ex = [], ey = [];
+    edges.forEach(e => {
+      const s = pos[e.source], t = pos[e.target];
+      if (s && t) { ex.push(s[0], t[0], null); ey.push(s[1], t[1], null); }
+    });
+
+    const maxFreq = Math.max(...nodes.map(nd => nd.frequency || 1), 1);
+    const nodeTrace = {
+      x: nodes.map(nd => pos[nd.id]?.[0] || 0),
+      y: nodes.map(nd => pos[nd.id]?.[1] || 0),
+      mode: 'markers+text',
+      type: 'scatter',
+      text: nodes.map(nd => nd.label),
+      textposition: 'top center',
+      textfont: { size: 8, color: '#555' },
+      marker: {
+        size:  nodes.map(nd => Math.max(8, Math.min(30, 8 + ((nd.frequency||1)/maxFreq)*24))),
+        color: nodes.map(nd => nd.color || '#888'),
+        line:  { width: 1.5, color: 'white' },
+        opacity: 0.88,
+      },
+      hovertext: nodes.map(nd =>
+        `<b>${nd.label}</b><br>Type: ${nd.type}<br>Frequency: ${nd.frequency}<br>ID: ${nd.id}`
+      ),
+      hoverinfo: 'text',
+      customdata: nodes,
+    };
+
+    const edgeTrace = {
+      x: ex, y: ey,
+      mode: 'lines', type: 'scatter',
+      line: { width: 0.6, color: '#e0e0e0' },
+      hoverinfo: 'none',
+    };
+
+    const pad = rings * 2.5;
+    Plotly.newPlot(document.getElementById('graph-plot'), [edgeTrace, nodeTrace], {
+      margin:      { t: 10, b: 10, l: 10, r: 10 },
+      xaxis:       { showgrid: false, zeroline: false, showticklabels: false, range: [-pad, pad] },
+      yaxis:       { showgrid: false, zeroline: false, showticklabels: false, range: [-pad, pad] },
+      plot_bgcolor:'#FAFAFA', paper_bgcolor: '#FAFAFA',
+      showlegend:  false,
+      hovermode:   'closest',
+      dragmode:    'pan',
+    }, { responsive: true, displayModeBar: true,
+         modeBarButtonsToRemove: ['lasso2d','select2d','toImage'] });
+
+    // Update stats bar
+    document.getElementById('graph-stats').classList.remove('hidden');
+    document.getElementById('st-nodes').textContent = nodes.length;
+    document.getElementById('st-edges').textContent = edges.length;
+
+    // Click handler for node info
+    document.getElementById('graph-plot').on('plotly_click', data => {
+      const pt = data.points?.[0];
+      if (pt && pt.customdata) {
+        const nd = pt.customdata;
+        document.getElementById('node-info').classList.remove('hidden');
+        document.getElementById('ni-title').textContent = nd.label;
+        document.getElementById('ni-type').textContent  = nd.type;
+        document.getElementById('ni-freq').textContent  = nd.frequency;
+        document.getElementById('ni-id').textContent    = nd.id;
+      }
+    });
+  }
+</script>
+{% endblock %}

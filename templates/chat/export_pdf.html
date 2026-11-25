@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <title>{{ session.title }} — GraphRAG Export</title>
+  <style>
+    body{font-family:Georgia,serif;max-width:800px;margin:40px auto;color:#1a1a1a;line-height:1.6}
+    h1{color:#FF6B35;border-bottom:2px solid #FF6B35;padding-bottom:10px;font-size:24px}
+    .meta{color:#888;font-size:12px;margin-bottom:28px}
+    .msg{margin-bottom:20px;page-break-inside:avoid}
+    .msg-user{background:#FFF0EA;border-left:4px solid #FF6B35;padding:12px 16px;border-radius:4px}
+    .msg-assistant{background:#f9f9f9;border-left:4px solid #4FC3F7;padding:12px 16px;border-radius:4px}
+    .role{font-weight:bold;font-size:11px;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px}
+    .role-u{color:#FF6B35}.role-a{color:#0288D1}
+    .cat-badge{font-size:11px;background:#E1F5FE;color:#0288D1;padding:2px 8px;border-radius:20px;font-family:monospace}
+    .sources{margin-top:10px;font-size:12px;color:#555;border-top:1px solid #eee;padding-top:8px}
+    .content{font-size:14px;white-space:pre-wrap}
+    .time{font-size:11px;color:#aaa;margin-top:6px}
+    .no-print{margin-bottom:20px}
+    @media print{.no-print{display:none}}
+  </style>
+</head>
+<body>
+  <div class="no-print">
+    <button onclick="window.print()" style="background:#FF6B35;color:white;border:none;padding:10px 20px;border-radius:8px;cursor:pointer;font-size:14px;margin-right:10px">🖨️ Print / Save as PDF</button>
+    <button onclick="window.close()" style="padding:10px 20px;border-radius:8px;border:1px solid #ddd;cursor:pointer;font-size:14px">✕ Close</button>
+  </div>
+  <h1>{{ session.title|default:"Research Session" }}</h1>
+  <div class="meta">GraphRAG Research Assistant · Session #{{ session.id }} · {{ session.created_at|date:"F j, Y H:i" }} UTC · User: {{ session.user.username }}</div>
+  {% for m in messages %}
+  <div class="msg">
+    {% if m.role == 'user' %}
+      <div class="msg-user">
+        <div class="role role-u">👤 You</div>
+        <div class="content">{{ m.content }}</div>
+        <div class="time">{{ m.created_at|date:"H:i" }}</div>
+      </div>
+    {% else %}
+      <div class="msg-assistant">
+        <div class="role role-a">🤖 GraphRAG</div>
+        {% if m.category and m.category != 'Unknown' %}
+          <div style="margin-bottom:8px"><span class="cat-badge">{{ m.category }}</span> {{ m.cat_label }}</div>
+        {% endif %}
+        <div class="content">{{ m.content }}</div>
+        {% if m.sources %}
+          <div class="sources"><strong>📚 References:</strong><br>
+            {% for src in m.sources %}[{{ forloop.counter }}] {{ src.title }} ({{ src.category }})<br>{% endfor %}
+          </div>
+        {% endif %}
+        <div class="time">{{ m.created_at|date:"H:i" }}{% if m.response_time %} · ⚡ {{ m.response_time }}s{% endif %}</div>
+      </div>
+    {% endif %}
+  </div>
+  {% endfor %}
+  <div style="margin-top:40px;padding-top:20px;border-top:1px solid #eee;font-size:12px;color:#aaa;text-align:center">
+    GraphRAG Scientific Research Assistant · arXiv 206K papers · 25 categories
+  </div>
+</body>
+</html>

@@ -1,0 +1,46 @@
+/* GraphRAG — Global styles */
+:root {
+  --orange:   #FF6B35;
+  --orange-l: #FF8C5A;
+  --orange-d: #E5512B;
+  --orange-p: #FFF0EA;
+  --sky:      #4FC3F7;
+  --sky-d:    #0288D1;
+  --sky-p:    #E1F5FE;
+}
+
+/* Markdown-style prose inside chat bubbles */
+.prose strong  { color: #FF6B35; font-weight: 700; }
+.prose em      { font-style: italic; color: #555; }
+.prose code    { background: #FFF0EA; color: #E5512B; padding: 1px 5px;
+                 border-radius: 4px; font-size: .875em;
+                 font-family: 'JetBrains Mono', monospace; }
+.prose p       { margin-bottom: .75rem; line-height: 1.7; }
+.prose ul      { list-style: disc; padding-left: 1.5rem; }
+.prose ol      { list-style: decimal; padding-left: 1.5rem; }
+.prose li      { margin-bottom: .25rem; }
+.prose h3      { font-weight: 700; font-size: 1rem; margin: .75rem 0 .4rem; }
+
+/* Confidence progress bars */
+.conf-bar      { height: 4px; border-radius: 2px; background: #f0f0f0; display: inline-block; vertical-align: middle; }
+.conf-fill     { height: 100%; border-radius: 2px;
+                 background: linear-gradient(90deg, #4FC3F7, #FF6B35); }
+
+/* Skeleton loader */
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position:  200% 0; }
+}
+.skeleton {
+  background: linear-gradient(90deg,#f5f5f5 25%,#ebebeb 50%,#f5f5f5 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 8px;
+}
+
+/* Print — PDF export */
+@media print {
+  nav, #sidebar, #inp-wrap, .no-print { display: none !important; }
+  body  { background: #fff; font-size: 12pt; }
+  .card { box-shadow: none; border: 1px solid #ddd; }
+}

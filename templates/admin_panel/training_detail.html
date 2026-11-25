@@ -1,0 +1,239 @@
+{% extends 'base/base.html' %}
+{% block title %}Training Metrics — GraphRAG{% endblock %}
+{% block extra_css %}<script src="https://cdn.plot.ly/plotly-2.26.0.min.js"></script>{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 py-8">
+  <div class="flex items-center gap-4 mb-8">
+    <a href="/admin-panel/" class="text-gray-400 hover:text-brand-DEFAULT text-sm transition-colors">← Dashboard</a>
+    <h1 class="font-display text-3xl font-bold text-gray-900">Training Metrics Detail</h1>
+  </div>
+
+  {% if no_data %}
+  <div class="card p-16 text-center">
+    <div class="text-6xl mb-4">🤖</div>
+    <h2 class="text-xl font-bold text-gray-900 mb-2">No Training Data Yet</h2>
+    <p class="text-gray-500 mb-6">Train the SVM + Naive Bayes models first from the Admin Dashboard.</p>
+    <a href="/admin-panel/" class="btn-brand px-6 py-3 rounded-xl font-semibold text-sm inline-block">← Go to Dashboard</a>
+  </div>
+  {% else %}
+
+  <!-- Run summary -->
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+    <div class="card p-5 text-center">
+      <div class="text-2xl font-bold text-brand-DEFAULT">{{ run.train_size }}</div>
+      <div class="text-sm text-gray-500 mt-1">Train Samples</div>
+    </div>
+    <div class="card p-5 text-center">
+      <div class="text-2xl font-bold text-sky-dark">{{ run.test_size }}</div>
+      <div class="text-sm text-gray-500 mt-1">Test Samples</div>
+    </div>
+    <div class="card p-5 text-center">
+      <div class="text-2xl font-bold text-green-600">{{ run.num_classes }}</div>
+      <div class="text-sm text-gray-500 mt-1">arXiv Categories</div>
+    </div>
+    <div class="card p-5 text-center">
+      <div class="text-2xl font-bold text-purple-600">80 / 20</div>
+      <div class="text-sm text-gray-500 mt-1">Train / Test Split</div>
+    </div>
+  </div>
+
+  <!-- Metric comparison cards -->
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+    {% if svm_m %}
+    <div class="card p-6">
+      <div class="flex items-center justify-between mb-5">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 bg-brand-pale rounded-xl flex items-center justify-center text-xl">⚙️</div>
+          <div>
+            <h3 class="font-bold text-gray-900">Support Vector Machine</h3>
+            <p class="text-xs text-gray-400 font-mono">LinearSVC · C=1.0 · 25 categories</p>
+          </div>
+        </div>
+        <span class="bg-brand-pale text-brand-dark text-xs font-bold px-3 py-1 rounded-full">PRIMARY</span>
+      </div>
+      <div class="space-y-3">
+        <div class="flex items-center justify-between">
+          <span class="text-sm text-gray-600 w-24">Accuracy</span>
+          <div class="flex items-center gap-3 flex-1 ml-3">
+            <div class="flex-1 bg-gray-100 rounded-full h-2">
+              <div class="bg-green-500 h-2 rounded-full transition-all" style="width:{% widthratio svm_m.accuracy 1 100 %}%"></div>
+            </div>
+            <span class="font-mono font-bold text-gray-900 text-sm w-14 text-right">{{ svm_m.accuracy|floatformat:4 }}</span>
+          </div>
+        </div>
+        <div class="flex items-center justify-between">
+          <span class="text-sm text-gray-600 w-24">Precision</span>
+          <div class="flex items-center gap-3 flex-1 ml-3">
+            <div class="flex-1 bg-gray-100 rounded-full h-2">
+              <div class="bg-sky-DEFAULT h-2 rounded-full transition-all" style="width:{% widthratio svm_m.precision 1 100 %}%"></div>
+            </div>
+            <span class="font-mono font-bold text-gray-900 text-sm w-14 text-right">{{ svm_m.precision|floatformat:4 }}</span>
+          </div>
+        </div>
+        <div class="flex items-center justify-between">
+          <span class="text-sm text-gray-600 w-24">Recall</span>
+          <div class="flex items-center gap-3 flex-1 ml-3">
+            <div class="flex-1 bg-gray-100 rounded-full h-2">
+              <div class="bg-purple-400 h-2 rounded-full transition-all" style="width:{% widthratio svm_m.recall 1 100 %}%"></div>
+            </div>
+            <span class="font-mono font-bold text-gray-900 text-sm w-14 text-right">{{ svm_m.recall|floatformat:4 }}</span>
+          </div>
+        </div>
+        <div class="flex items-center justify-between">
+          <span class="text-sm text-gray-600 w-24">F1-Score</span>
+          <div class="flex items-center gap-3 flex-1 ml-3">
+            <div class="flex-1 bg-gray-100 rounded-full h-2">
+              <div class="bg-brand-DEFAULT h-2 rounded-full transition-all" style="width:{% widthratio svm_m.f1_score 1 100 %}%"></div>
+            </div>
+            <span class="font-mono font-bold text-brand-DEFAULT text-sm w-14 text-right">{{ svm_m.f1_score|floatformat:4 }}</span>
+          </div>
+        </div>
+        <div class="mt-2 pt-2 border-t border-gray-50 text-xs text-gray-400 font-mono">
+          Train time: {{ svm_m.train_time_sec|floatformat:1 }}s
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    {% if nb_m %}
+    <div class="card p-6">
+      <div class="flex items-center justify-between mb-5">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 bg-sky-pale rounded-xl flex items-center justify-center text-xl">🧮</div>
+          <div>
+            <h3 class="font-bold text-gray-900">Complement Naive Bayes</h3>
+            <p class="text-xs text-gray-400 font-mono">ComplementNB · α=0.1 · baseline</p>
+          </div>
+        </div>
+        <span class="bg-sky-pale text-sky-dark text-xs font-bold px-3 py-1 rounded-full">BASELINE</span>
+      </div>
+      <div class="space-y-3">
+        <div class="flex items-center justify-between">
+          <span class="text-sm text-gray-600 w-24">Accuracy</span>
+          <div class="flex items-center gap-3 flex-1 ml-3">
+            <div class="flex-1 bg-gray-100 rounded-full h-2">
+              <div class="bg-green-500 h-2 rounded-full" style="width:{% widthratio nb_m.accuracy 1 100 %}%"></div>
+            </div>
+            <span class="font-mono font-bold text-gray-900 text-sm w-14 text-right">{{ nb_m.accuracy|floatformat:4 }}</span>
+          </div>
+        </div>
+        <div class="flex items-center justify-between">
+          <span class="text-sm text-gray-600 w-24">Precision</span>
+          <div class="flex items-center gap-3 flex-1 ml-3">
+            <div class="flex-1 bg-gray-100 rounded-full h-2">
+              <div class="bg-sky-DEFAULT h-2 rounded-full" style="width:{% widthratio nb_m.precision 1 100 %}%"></div>
+            </div>
+            <span class="font-mono font-bold text-gray-900 text-sm w-14 text-right">{{ nb_m.precision|floatformat:4 }}</span>
+          </div>
+        </div>
+        <div class="flex items-center justify-between">
+          <span class="text-sm text-gray-600 w-24">Recall</span>
+          <div class="flex items-center gap-3 flex-1 ml-3">
+            <div class="flex-1 bg-gray-100 rounded-full h-2">
+              <div class="bg-purple-400 h-2 rounded-full" style="width:{% widthratio nb_m.recall 1 100 %}%"></div>
+            </div>
+            <span class="font-mono font-bold text-gray-900 text-sm w-14 text-right">{{ nb_m.recall|floatformat:4 }}</span>
+          </div>
+        </div>
+        <div class="flex items-center justify-between">
+          <span class="text-sm text-gray-600 w-24">F1-Score</span>
+          <div class="flex items-center gap-3 flex-1 ml-3">
+            <div class="flex-1 bg-gray-100 rounded-full h-2">
+              <div class="bg-sky-DEFAULT h-2 rounded-full" style="width:{% widthratio nb_m.f1_score 1 100 %}%"></div>
+            </div>
+            <span class="font-mono font-bold text-sky-dark text-sm w-14 text-right">{{ nb_m.f1_score|floatformat:4 }}</span>
+          </div>
+        </div>
+        <div class="mt-2 pt-2 border-t border-gray-50 text-xs text-gray-400 font-mono">
+          Train time: {{ nb_m.train_time_sec|floatformat:1 }}s
+        </div>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Per-class F1 grouped bar -->
+  {% if classes %}
+  <div class="card p-6 mb-8">
+    <h2 class="font-semibold text-gray-900 text-lg mb-1">📊 Per-Category F1-Score Comparison</h2>
+    <p class="text-sm text-gray-400 mb-4">SVM vs Naive Bayes across all 25 arXiv categories</p>
+    <div id="f1-chart" style="height:400px"></div>
+  </div>
+  {% endif %}
+
+  <!-- Confusion matrix heatmap -->
+  <div class="card p-6">
+    <div class="flex items-center justify-between mb-4">
+      <div>
+        <h2 class="font-semibold text-gray-900 text-lg">🟦 Confusion Matrix</h2>
+        <p class="text-sm text-gray-400">Shows top-20 categories for readability</p>
+      </div>
+      <div class="flex gap-2">
+        <button onclick="loadCM('svm')"
+          class="btn-brand px-4 py-1.5 rounded-lg text-xs font-semibold">SVM</button>
+        <button onclick="loadCM('naive_bayes')"
+          class="btn-sky px-4 py-1.5 rounded-lg text-xs font-semibold">Naive Bayes</button>
+      </div>
+    </div>
+    <div id="cm-chart" style="height:440px"></div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+{% if classes %}
+const classes   = {{ classes|safe }};
+const catLabels = {{ cat_labels|safe }};
+const svmF1s    = {{ svm_f1s|safe }};
+const nbF1s     = {{ nb_f1s|safe }};
+
+// Per-class grouped bar
+const labels = classes.map((c,i) => c + '\n' + (catLabels[i]||'').substring(0,12));
+Plotly.newPlot('f1-chart', [
+  { x: labels, y: svmF1s, name: 'SVM',         type: 'bar', marker: { color: '#FF6B35', opacity: 0.85 } },
+  { x: labels, y: nbF1s,  name: 'Naive Bayes',  type: 'bar', marker: { color: '#4FC3F7', opacity: 0.85 } },
+], {
+  barmode: 'group',
+  margin:  { t: 10, b: 110, l: 50, r: 10 },
+  xaxis:   { tickangle: -40, title: 'arXiv Category', tickfont: { size: 10 } },
+  yaxis:   { range: [0, 1], title: 'F1-Score', gridcolor: '#f5f5f5' },
+  legend:  { orientation: 'h', y: -0.35 },
+  plot_bgcolor: 'white', paper_bgcolor: 'white',
+}, { responsive: true, displayModeBar: false });
+{% endif %}
+
+async function loadCM(model) {
+  const r = await fetch(`/admin-panel/api/confusion/?model=${model}`);
+  const d = await r.json();
+  if (d.error) { alert(d.error); return; }
+
+  const cm  = d.confusion_matrix || [];
+  const cr  = d.class_report || {};
+  if (!cm.length) { alert('No confusion matrix data available.'); return; }
+
+  const n      = cm.length;
+  const labels = Object.keys(cr).filter(k => !['accuracy','macro avg','weighted avg'].includes(k)).slice(0, 20);
+  const z      = cm.slice(0, 20).map(row => row.slice(0, 20));
+
+  Plotly.newPlot('cm-chart', [{
+    z, x: labels, y: labels,
+    type: 'heatmap',
+    colorscale: [['0','#E1F5FE'],['0.5','#4FC3F7'],['1','#FF6B35']],
+    showscale: true,
+    hoverongaps: false,
+  }], {
+    margin: { t: 40, b: 120, l: 140, r: 20 },
+    title:  { text: `${model === 'svm' ? 'SVM' : 'Naive Bayes'} — Confusion Matrix (top 20 categories)`, font: { size: 13 } },
+    xaxis:  { title: 'Predicted', tickangle: -45, tickfont: { size: 9 } },
+    yaxis:  { title: 'Actual', autorange: 'reversed', tickfont: { size: 9 } },
+    plot_bgcolor: 'white', paper_bgcolor: 'white',
+  }, { responsive: true, displayModeBar: false });
+}
+
+// Auto-load SVM confusion matrix on page open
+window.addEventListener('DOMContentLoaded', () => loadCM('svm'));
+</script>
+{% endblock %}

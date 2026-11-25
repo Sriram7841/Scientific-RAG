@@ -1,0 +1,96 @@
+{% extends 'base/base.html' %}
+{% block title %}Users — GraphRAG{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 py-8">
+  <div class="flex items-center justify-between mb-8">
+    <div class="flex items-center gap-4">
+      <a href="/admin-panel/" class="text-gray-400 hover:text-brand-DEFAULT text-sm transition-colors">← Dashboard</a>
+      <h1 class="font-display text-3xl font-bold text-gray-900">User Management</h1>
+    </div>
+    <span class="bg-brand-pale text-brand-dark text-sm font-semibold px-3 py-1 rounded-full">
+      {{ users|length }} user{{ users|length|pluralize }}
+    </span>
+  </div>
+
+  <div class="card overflow-hidden">
+    <table class="w-full text-sm">
+      <thead class="bg-gray-50 border-b border-gray-100">
+        <tr>
+          <th class="text-left px-6 py-4 font-semibold text-gray-600">User</th>
+          <th class="text-left px-6 py-4 font-semibold text-gray-600">Email</th>
+          <th class="text-left px-6 py-4 font-semibold text-gray-600">Role</th>
+          <th class="text-left px-6 py-4 font-semibold text-gray-600">Queries</th>
+          <th class="text-left px-6 py-4 font-semibold text-gray-600">Last Active</th>
+          <th class="text-left px-6 py-4 font-semibold text-gray-600">Joined</th>
+          <th class="text-left px-6 py-4 font-semibold text-gray-600">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for u in users %}
+        <tr class="border-t border-gray-50 hover:bg-gray-50 transition-colors">
+          <td class="px-6 py-4">
+            <div class="flex items-center gap-3">
+              <div class="w-9 h-9 grad-brand rounded-xl flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
+                {{ u.username|first|upper }}
+              </div>
+              <div>
+                <div class="font-semibold text-gray-900">{{ u.username }}</div>
+                <div class="text-xs text-gray-400">{{ u.get_full_name }}</div>
+              </div>
+            </div>
+          </td>
+          <td class="px-6 py-4 text-gray-600 text-sm">{{ u.email|default:"—" }}</td>
+          <td class="px-6 py-4">
+            {% if u.is_superuser %}
+              <span class="bg-red-50 text-red-700 text-xs font-bold px-2 py-0.5 rounded-full">Superuser</span>
+            {% elif u.is_staff %}
+              <span class="bg-brand-pale text-brand-dark text-xs font-bold px-2 py-0.5 rounded-full">Staff</span>
+            {% else %}
+              <span class="bg-sky-pale text-sky-dark text-xs font-semibold px-2 py-0.5 rounded-full">Researcher</span>
+            {% endif %}
+          </td>
+          <td class="px-6 py-4">
+            <span class="font-mono font-bold text-gray-900">{{ u.query_count }}</span>
+          </td>
+          <td class="px-6 py-4 text-gray-500 text-xs">{{ u.last_active|timesince }} ago</td>
+          <td class="px-6 py-4 text-gray-500 text-xs">{{ u.date_joined|date:"M d, Y" }}</td>
+          <td class="px-6 py-4">
+            {% if not u.is_superuser and u != request.user %}
+              <button onclick="delUser({{ u.id }}, '{{ u.username }}')"
+                class="text-red-400 hover:text-red-600 text-xs font-medium hover:bg-red-50 px-3 py-1.5 rounded-lg transition-colors">
+                Delete
+              </button>
+            {% else %}
+              <span class="text-gray-200 text-xs">Protected</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="7" class="px-6 py-16 text-center text-gray-400">No users found.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function csrf() {
+  return (document.cookie.split(';').find(c => c.trim().startsWith('csrftoken=')) || '').split('=')[1] || '';
+}
+async function delUser(id, name) {
+  if (!confirm(`Delete user "${name}"? This cannot be undone.`)) return;
+  const r = await fetch(`/admin-panel/users/${id}/delete/`, {
+    method: 'POST',
+    headers: { 'X-CSRFToken': csrf() }
+  });
+  const d = await r.json();
+  if (d.success) location.reload();
+  else alert(d.error || 'Failed to delete user.');
+}
+</script>
+{% endblock %}

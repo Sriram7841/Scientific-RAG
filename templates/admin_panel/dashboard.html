@@ -1,0 +1,194 @@
+{% extends 'base/base.html' %}
+{% block title %}Admin Dashboard — GraphRAG{% endblock %}
+{% block extra_css %}<script src="https://cdn.plot.ly/plotly-2.26.0.min.js"></script>{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 py-8">
+  <div class="flex items-center justify-between mb-8">
+    <div>
+      <h1 class="font-display text-3xl font-bold text-gray-900">Admin Dashboard</h1>
+      <p class="text-gray-500 text-sm mt-1">arXiv 206K papers · 25 categories · SVM + FAISS + GraphRAG</p>
+    </div>
+    <div class="flex gap-3">
+      <a href="/admin-panel/eda/"            class="btn-sky   px-4 py-2 rounded-xl text-sm font-semibold">📊 EDA</a>
+      <a href="/admin-panel/training-detail/" class="btn-brand px-4 py-2 rounded-xl text-sm font-semibold">📈 Metrics</a>
+      <a href="/admin-panel/graph/"          class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-xl text-sm font-semibold transition-colors">🕸️ Graph</a>
+      <a href="/admin-panel/users/"          class="bg-gray-800 hover:bg-gray-700 text-white px-4 py-2 rounded-xl text-sm font-semibold transition-colors">👥 Users</a>
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+    <div class="card p-5"><div class="text-3xl mb-1">👥</div><div class="text-2xl font-bold">{{ user_count }}</div><div class="text-sm text-gray-500">Users</div></div>
+    <div class="card p-5"><div class="text-3xl mb-1">💬</div><div class="text-2xl font-bold">{{ message_count }}</div><div class="text-sm text-gray-500">Messages</div></div>
+    <div class="card p-5"><div class="text-3xl mb-1">🗂️</div><div class="text-2xl font-bold">{{ session_count }}</div><div class="text-sm text-gray-500">Sessions</div></div>
+    <div class="card p-5"><div class="text-3xl mb-1">📄</div><div class="text-2xl font-bold grad-text">206K</div><div class="text-sm text-gray-500">arXiv Papers</div></div>
+  </div>
+
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+    <!-- Status -->
+    <div class="card p-6">
+      <h2 class="font-semibold text-gray-900 text-lg mb-4 flex items-center gap-2">
+        🔧 Pipeline Status
+        <span id="spin" class="hidden text-xs bg-amber-50 text-amber-600 px-2 py-0.5 rounded-full animate-pulse">Running…</span>
+      </h2>
+      <div class="space-y-3">
+        <div class="flex justify-between items-center py-2.5 border-b border-gray-50">
+          <span class="text-sm font-medium text-gray-700">📁 arxiv.csv Dataset</span>
+          {% if csv_exists %}<span class="flex items-center gap-2 text-green-600 text-xs font-semibold"><span class="dot-g"></span>Found ({{ csv_size_mb }} MB)</span>
+          {% else %}<span class="flex items-center gap-2 text-red-500 text-xs font-semibold"><span class="dot-r"></span>Missing</span>{% endif %}
+        </div>
+        <div class="flex justify-between items-center py-2.5 border-b border-gray-50">
+          <span class="text-sm font-medium text-gray-700">🤖 SVM + Naive Bayes</span>
+          {% if classifier_ready %}<span class="flex items-center gap-2 text-green-600 text-xs font-semibold"><span class="dot-g"></span>Trained</span>
+          {% else %}<span class="flex items-center gap-2 text-amber-500 text-xs"><span class="dot-a"></span>Not Trained</span>{% endif %}
+        </div>
+        <div class="flex justify-between items-center py-2.5 border-b border-gray-50">
+          <span class="text-sm font-medium text-gray-700">🔎 FAISS Vector Index</span>
+          {% if faiss_ready %}<span class="flex items-center gap-2 text-green-600 text-xs font-semibold"><span class="dot-g"></span>Ready</span>
+          {% else %}<span class="flex items-center gap-2 text-amber-500 text-xs"><span class="dot-a"></span>Not Built</span>{% endif %}
+        </div>
+        <div class="flex justify-between items-center py-2.5">
+          <span class="text-sm font-medium text-gray-700">🕸️ Knowledge Graph</span>
+          {% if graph_ready %}<span class="flex items-center gap-2 text-green-600 text-xs font-semibold"><span class="dot-g"></span>Ready</span>
+          {% else %}<span class="flex items-center gap-2 text-amber-500 text-xs"><span class="dot-a"></span>Not Built</span>{% endif %}
+        </div>
+      </div>
+      {% if last_index %}
+      <div class="mt-4 p-3 bg-gray-50 rounded-xl text-xs font-mono text-gray-500">
+        Last index: {{ last_index.total_vectors|default:0 }} vectors · {{ last_index.graph_nodes|default:0 }} graph nodes · {{ last_index.completed_at|timesince }} ago
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Actions -->
+    <div class="card p-6">
+      <h2 class="font-semibold text-gray-900 text-lg mb-4">⚡ Pipeline Actions</h2>
+      <div class="space-y-3">
+        <form method="post" action="/admin-panel/train/" onsubmit="return confirm('Train SVM + Naive Bayes on 206K arXiv papers? (3-10 min)')">
+          {% csrf_token %}
+          <button class="w-full text-left px-4 py-3.5 rounded-xl bg-brand-pale border border-orange-200 hover:bg-brand-DEFAULT hover:text-white hover:border-brand-DEFAULT transition-all text-sm font-medium group">
+            <span class="text-lg mr-2">🤖</span> Train SVM + Naive Bayes (25 categories)
+            <span class="block text-xs text-gray-400 group-hover:text-white/70 ml-8 mt-0.5">80/20 stratified · TF-IDF bigrams · 30K features · joblib save</span>
+          </button>
+        </form>
+        <form method="post" action="/admin-panel/build-index/" onsubmit="return confirm('Build FAISS index + Knowledge Graph? (10-20 min on full dataset)')">
+          {% csrf_token %}
+          <button class="w-full text-left px-4 py-3.5 rounded-xl bg-sky-pale border border-blue-200 hover:bg-sky-DEFAULT hover:text-white hover:border-sky-DEFAULT transition-all text-sm font-medium group">
+            <span class="text-lg mr-2">🔎</span> Build FAISS Index + Knowledge Graph
+            <span class="block text-xs text-gray-400 group-hover:text-white/70 ml-8 mt-0.5">all-MiniLM-L6-v2 · NetworkX · entities + relations</span>
+          </button>
+        </form>
+        <a href="/admin-panel/eda/" class="block w-full text-left px-4 py-3.5 rounded-xl bg-gray-50 border border-gray-200 hover:bg-gray-100 transition-all text-sm font-medium">
+          <span class="text-lg mr-2">📊</span> Exploratory Data Analysis
+          <span class="block text-xs text-gray-400 ml-8 mt-0.5">Category charts · word cloud · abstract stats</span>
+        </a>
+        <a href="/admin-panel/graph/" class="block w-full text-left px-4 py-3.5 rounded-xl bg-green-50 border border-green-200 hover:bg-green-100 transition-all text-sm font-medium">
+          <span class="text-lg mr-2">🕸️</span> Knowledge Graph Visualisation
+          <span class="block text-xs text-gray-400 ml-8 mt-0.5">Interactive Plotly network · entity-relation browser</span>
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Metric cards -->
+  {% if svm_m or nb_m %}
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+    {% if svm_m %}
+    <div class="card p-6">
+      <div class="flex items-center gap-3 mb-5">
+        <div class="w-10 h-10 bg-brand-pale rounded-xl flex items-center justify-center text-xl">⚙️</div>
+        <div>
+          <h3 class="font-bold text-gray-900">Support Vector Machine</h3>
+          <p class="text-xs text-gray-400 font-mono">LinearSVC · 25 categories</p>
+        </div>
+        <span class="ml-auto bg-brand-pale text-brand-dark text-xs font-bold px-2 py-0.5 rounded-full">PRIMARY</span>
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div class="bg-green-50 rounded-xl p-3 text-center"><div class="text-xl font-bold text-green-700">{{ svm_m.accuracy|floatformat:3 }}</div><div class="text-xs text-gray-500">Accuracy</div></div>
+        <div class="bg-brand-pale rounded-xl p-3 text-center"><div class="text-xl font-bold text-brand-DEFAULT">{{ svm_m.f1_score|floatformat:3 }}</div><div class="text-xs text-gray-500">F1-Score</div></div>
+        <div class="bg-sky-pale rounded-xl p-3 text-center"><div class="text-xl font-bold text-sky-dark">{{ svm_m.precision|floatformat:3 }}</div><div class="text-xs text-gray-500">Precision</div></div>
+        <div class="bg-purple-50 rounded-xl p-3 text-center"><div class="text-xl font-bold text-purple-700">{{ svm_m.recall|floatformat:3 }}</div><div class="text-xs text-gray-500">Recall</div></div>
+      </div>
+      <a href="/admin-panel/training-detail/" class="mt-3 block text-center text-xs text-sky-dark hover:underline">View confusion matrix & per-class F1 →</a>
+    </div>
+    {% endif %}
+    {% if nb_m %}
+    <div class="card p-6">
+      <div class="flex items-center gap-3 mb-5">
+        <div class="w-10 h-10 bg-sky-pale rounded-xl flex items-center justify-center text-xl">🧮</div>
+        <div>
+          <h3 class="font-bold text-gray-900">Complement Naive Bayes</h3>
+          <p class="text-xs text-gray-400 font-mono">ComplementNB · α=0.1 · baseline</p>
+        </div>
+        <span class="ml-auto bg-sky-pale text-sky-dark text-xs font-bold px-2 py-0.5 rounded-full">BASELINE</span>
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div class="bg-green-50 rounded-xl p-3 text-center"><div class="text-xl font-bold text-green-700">{{ nb_m.accuracy|floatformat:3 }}</div><div class="text-xs text-gray-500">Accuracy</div></div>
+        <div class="bg-sky-pale rounded-xl p-3 text-center"><div class="text-xl font-bold text-sky-dark">{{ nb_m.f1_score|floatformat:3 }}</div><div class="text-xs text-gray-500">F1-Score</div></div>
+        <div class="bg-brand-pale rounded-xl p-3 text-center"><div class="text-xl font-bold text-brand-DEFAULT">{{ nb_m.precision|floatformat:3 }}</div><div class="text-xs text-gray-500">Precision</div></div>
+        <div class="bg-purple-50 rounded-xl p-3 text-center"><div class="text-xl font-bold text-purple-700">{{ nb_m.recall|floatformat:3 }}</div><div class="text-xs text-gray-500">Recall</div></div>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  <!-- History chart -->
+  {% if training_runs %}
+  <div class="card p-6">
+    <h2 class="font-semibold text-gray-900 text-lg mb-4">📈 Training History</h2>
+    <div id="hist-chart" style="height:260px"></div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // Poll status while jobs running
+  async function poll(){
+    const r=await fetch('/admin-panel/api/status/');
+    const d=await r.json();
+    const spin=document.getElementById('spin');
+    if(d.training_running||d.indexing_running){
+      spin.classList.remove('hidden');
+      setTimeout(poll,6000);
+    }else{
+      spin.classList.add('hidden');
+    }
+  }
+  poll();
+
+  {% if training_runs %}
+  (async()=>{
+    const r=await fetch('/admin-panel/api/metrics/');
+    const d=await r.json();
+    if(!d.runs||!d.runs.length)return;
+    const dates=[],svmAcc=[],nbAcc=[],svmF1=[],nbF1=[];
+    d.runs.slice().reverse().forEach(run=>{
+      const dt=new Date(run.completed_at).toLocaleDateString();
+      const svm=run.metrics.find(m=>m.model==='svm');
+      const nb=run.metrics.find(m=>m.model==='naive_bayes');
+      if(svm&&nb){
+        dates.push(dt);
+        svmAcc.push(svm.accuracy);nbAcc.push(nb.accuracy);
+        svmF1.push(svm.f1_score);nbF1.push(nb.f1_score);
+      }
+    });
+    Plotly.newPlot('hist-chart',[
+      {x:dates,y:svmAcc,name:'SVM Accuracy',mode:'lines+markers',line:{color:'#FF6B35',width:2},marker:{size:7}},
+      {x:dates,y:nbAcc,name:'NB Accuracy',mode:'lines+markers',line:{color:'#4FC3F7',width:2},marker:{size:7}},
+      {x:dates,y:svmF1,name:'SVM F1',mode:'lines+markers',line:{color:'#FF6B35',width:1.5,dash:'dot'},marker:{size:5}},
+      {x:dates,y:nbF1,name:'NB F1',mode:'lines+markers',line:{color:'#4FC3F7',width:1.5,dash:'dot'},marker:{size:5}},
+    ],{
+      margin:{t:10,b:40,l:50,r:10},
+      yaxis:{range:[0,1],title:'Score',gridcolor:'#f5f5f5'},
+      xaxis:{showgrid:false},
+      legend:{orientation:'h',y:-0.2},
+      plot_bgcolor:'white',paper_bgcolor:'white',
+    },{responsive:true,displayModeBar:false});
+  })();
+  {% endif %}
+</script>
+{% endblock %}
